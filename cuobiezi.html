@@ -1,0 +1,272 @@
+<title>错别字卡</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: one-column phone deck; card mode = big tap card + arrow bar, list mode = rows with striped cover boxes */
+:root{
+  --bg:#f3f1ec; --surface:#fffdf8; --ink:#1f1d1a; --muted:#6d675e; --line:#ddd6ca;
+  --accent:#b8322a; --accent-soft:#f6e3df; --star:#c98a00; --stripe:#cfc6b6;
+  --hanzi:"Noto Serif SC","Songti SC","SimSun",serif; --ui:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16171a; --surface:#202227; --ink:#ece8e1; --muted:#9a948a; --line:#34363c;
+  --accent:#e0675d; --accent-soft:#3a2523; --star:#f0b429; --stripe:#4a4c53; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16171a; --surface:#202227; --ink:#ece8e1; --muted:#9a948a; --line:#34363c;
+  --accent:#e0675d; --accent-soft:#3a2523; --star:#f0b429; --stripe:#4a4c53; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:15px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{font-family:var(--hanzi);font-size:26px;margin:0}
+.sub{color:var(--muted);font-size:13px}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip[aria-pressed="true"],.mode[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;min-height:300px;padding:22px 20px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;cursor:pointer;position:relative;user-select:none;touch-action:pan-y}
+.card .tag{position:absolute;top:12px;left:14px;font-size:12px;color:var(--muted)}
+.card .count{position:absolute;top:12px;right:52px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.starbtn{position:absolute;top:4px;right:6px;border:none;background:none;font-size:24px;padding:6px;color:var(--muted)}
+.starbtn.on{color:var(--star)}
+.py{font-size:28px;font-weight:600;letter-spacing:.02em}
+.en{font-size:17px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.word{font-family:var(--hanzi);font-size:56px;line-height:1.15}
+.wrong{font-size:15px;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:8px}
+.wrong s{font-family:var(--hanzi)}
+.why{font-size:15px;line-height:1.55;max-width:34ch}
+.say{border-radius:999px;font-size:14px}
+.bar{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px}
+.bar button{border-radius:12px;padding:12px 0;font-size:16px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.item .meta{min-width:0}
+.item .py2{font-weight:600}
+.item .en2{color:var(--muted);font-size:13px}
+.cover{grid-column:1/-1;border-radius:8px;padding:8px 10px;cursor:pointer;min-height:42px;
+  background:repeating-linear-gradient(45deg,var(--stripe) 0 8px,transparent 8px 16px);border:1px dashed var(--stripe)}
+.cover.open{background:none;border-style:solid;border-color:var(--line)}
+.cover .in{visibility:hidden}
+.cover.open .in{visibility:visible}
+.cover .w2{font-family:var(--hanzi);font-size:24px}
+.cover .x2{color:var(--accent);font-size:13px;margin-left:8px}
+.cover .y2{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.item .starbtn{position:static}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+@media (prefers-reduced-motion:no-preference){.card{transition:transform .12s}.card:active{transform:scale(.99)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>错别字卡</h1>
+    <span class="sub" id="total"></span>
+  </header>
+  <p class="sub" style="margin:0">Read the 拼音 + meaning → <b>write the word on paper</b> → tap to check. Every card is a word you actually got wrong.</p>
+  <div class="row" id="chips"></div>
+  <div class="row">
+    <button class="mode" id="mCard" aria-pressed="true">🃏 卡片</button>
+    <button class="mode" id="mList" aria-pressed="false">📋 列表</button>
+    <button id="shuffle">🔀 打乱</button>
+  </div>
+
+  <section id="cardView">
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Flip card"></div>
+    <div class="bar" style="margin-top:10px">
+      <button id="prev" aria-label="Previous">←</button>
+      <button id="flip">翻面</button>
+      <button id="next" aria-label="Next">→</button>
+    </div>
+  </section>
+  <section id="listView" hidden>
+    <div class="row" style="margin-bottom:8px"><button id="openAll">全部打开</button><button id="closeAll">全部遮住</button></div>
+    <div class="list" id="list"></div>
+  </section>
+</div>
+
+<script>
+// [correct, what he wrote, pinyin, English, subject, why]
+const D=[
+["尔独","而独","ěr dú","you alone (慈乌夜啼)","华文","尔 = \"you\" in 古文. 而 = \"and/but\" connector."],
+["应是","因是","yīng shì","it must be that (应是母慈重)","华文","应 = should / must be. 因 = because."],
+["应当","因当","yīng dāng","should","华文","应 = should. 因 = because."],
+["未尽","未经 / 末尽","wèi jìn","not yet fulfilled (未尽反哺心)","华文","尽 = use up / fulfil (尽力). 末 = end — its top stroke is LONGER than 未's."],
+["不如禽","不如擒","bù rú qín","worse than a bird","华文","禽 = bird (家禽). 擒 has 扌 = catch with your hand."],
+["沾襟","沾禁","zhān jīn","tears wetting the lapel","华文","襟 has 衤 (clothing) = lapel. 禁 = forbid. Lost marks on the REAL 期末 too."],
+["悄悄","消消","qiāo qiāo","quietly","华文","忄 = heart → quiet manner. 消 has 氵 = disappear."],
+["难道","难到","nán dào","could it be that…?","华文","道 = say. 到 = arrive."],
+["借口","接口","jiè kǒu","excuse","华文","借 = borrow — a \"borrowed\" reason. 接 = receive / connect."],
+["思考","思靠","sī kǎo","think, ponder","华文","考 = test / think. 靠 = lean on."],
+["杜甫","社甫","Dù Fǔ","Du Fu (Tang poet)","华文","杜 has 木. 社 has 礻 = society."],
+["居住","居主","jū zhù","live, reside","华文","住 has 亻 — a person lives there. 主 = owner."],
+["知道","知到","zhī dào","know","华文","道, same as 难道. 到 = arrive."],
+["天资","天质","tiān zī","natural talent","华文","资 has 贝 (treasure) = what you're given. 质 = quality. Wrong 3 times!"],
+["真的","正的","zhēn de","really, truly","华文","真 = true. 正 = straight / upright."],
+["惦记","掂记","diàn jì","keep thinking about","华文","惦 has 忄 = kept in your heart. 掂 has 扌 = weigh in your hand."],
+["诧异","宅异","chà yì","surprised","华文","诧 has 讠 (speech) — a surprised exclamation. 宅 = house."],
+["直到","至到","zhí dào","until","华文","直 = straight, all the way until. Fixed word: 直到."],
+["贫穷","平穷","pín qióng","poor","华文","贫 = 分 over 贝 — money divided away. 平 = flat."],
+["买不到","卖不到","mǎi bú dào","can't buy","华文","买 = buy. 卖 has an extra 十 on top = sell."],
+["不管","不关","bù guǎn","no matter, regardless","华文","管 = manage / care about. 关 = close."],
+["重新","从新","chóng xīn","anew (重新做人)","华文","重 (chóng) = again. 从 = from."],
+["校门","校们","xiào mén","school gate","华文","门 = gate. 们 has 亻 = plural for people."],
+["多此一举","做此一举","duō cǐ yì jǔ","an unnecessary action","华文","多 = extra / unneeded. 做 = do."],
+["乌云","鸦云","wū yún","dark clouds","华文","乌 = black (the crow 乌鸦 is the black bird). 鸦 = crow."],
+["专心","传心","zhuān xīn","concentrate","华文","专 = focused. 传 has 亻 = pass on."],
+["噼里啪啦","比力啪拉","pī li pā lā","crackling, pattering","华文","Sound words take 口: 噼 啪 啦."],
+["致","至","zhì","\"To:\" on a 通告","华文","致 = send to (致敬). 至 = arrive / reach."],
+["意义","义意","yì yì","meaning, significance","华文","Order: 意 first, then 义."],
+["它","他","tā","it (for things / animals)","华文","它 = things. 他 has 亻 = a man."],
+["取代","取待","qǔ dài","replace","华文","代 = replace (代替). 待 has 彳 = wait."],
+["桌子","卓","zhuō zi","table","华文","桌 has 木 at the bottom — a wooden table. 卓 = outstanding (卓越)."],
+["做工","做功","zuò gōng","do manual work","华文","工 = labour. 做功 is the physics term. Rote pair with 功课."],
+["正准备","再准备","zhèng zhǔn bèi","just about to","华文","正 = right in the middle of. 再 = again."],
+["功课","工课","gōng kè","homework","华文","功 has 力 = effort. Rote pair: 功课 but 做工."],
+["一转眼","一传眼","yì zhuǎn yǎn","in the blink of an eye","华文","转 has 车 = turn. 传 = pass on."],
+["在做","再做","zài zuò","be doing (right now)","华文","在 = in progress now. 再 = again."],
+["描述","描术","miáo shù","describe","华文","述 has 辶 = narrate (叙述). 术 = skill (技术)."],
+["赶紧","赶尽","gǎn jǐn","hurry","华文","紧 = tight / urgent. 尽 = use up."],
+["不断","不段","bú duàn","continuously","华文","断 = break off → \"never breaking\". 段 = section."],
+["造人","做人","zào rén","create people (女娲造人)","华文","造 = create / build (制造). 做人 = how to behave as a person."],
+["塞翁失马","塞翁是吗","sài wēng shī mǎ","a blessing in disguise","华文","失 = lose — the old man lost his horse."],
+["来自","来之","lái zì","come from","华文","自 = from (自从). 之 = 古文 \"of\"."],
+["快乐","快了","kuài lè","happy","华文","乐 = joy. 了 = done particle."],
+["可能是","可能事","kě néng shì","may be","华文","是 = is. 事 = matter / thing."],
+["时刻","时该 / 时亥","shí kè","moment","华文","刻 has 刂 (knife) — a carved mark on a clock (一刻钟). Wrong 3 times in one essay."],
+["提醒","提形","tí xǐng","remind","华文","醒 = 酉 + 星 = wake up. 形 = shape."],
+["问题","问提","wèn tí","problem","华文","题 has 页 = question (题目). 提 has 扌 = lift / mention."],
+["难题","难提","nán tí","difficult problem","华文","题 has 页 — same as 问题."],
+["只剩","只乘","zhǐ shèng","only … left","华文","剩 has 刂 = left over. 乘 = ride / multiply."],
+["杂乱无章","柔乱无章","zá luàn wú zhāng","messy, disorganised","华文","杂 = mixed (九 on top). 柔 = soft (矛 on top)."],
+["照顾","照顾 (顾 miswritten)","zhào gù","take care of","华文","顾 = 厄 + 页. Write it slowly once."],
+["崇拜","崇手拜","chóng bài","admire, worship","华文","拜 already has two hands joined — don't add an extra 手."],
+["傍晚","旁晚","bàng wǎn","dusk","华文","傍 has 亻 = close to (close to night). 旁 = side."],
+["就这样","有这样","jiù zhè yàng","just like that","华文","就 = just / then. 有 = have."],
+["再看","在看","zài kàn","look again","华文","再 = again. 在 = in progress."],
+["回家时","回家是","huí jiā shí","when going home","华文","时 = time / when. 是 = is."],
+["一篇","一个 / 一偏","yì piān","measure word for essays","华文","篇 has 竹 — ancient writing was on bamboo. 偏 has 亻 = slanted."],
+["经历","经利","jīng lì","experience","华文","历 = go through (历史). 利 = benefit."],
+["一瞬间","一舜间","yí shùn jiān","an instant","华文","瞬 has 目 = a blink of the eye. 舜 = an ancient emperor."],
+["稍纵即逝","稍纵即进","shāo zòng jí shì","fleeting","华文","逝 = vanish / pass away. 进 = enter."],
+["比赛","比塞","bǐ sài","competition","华文","赛 has 贝 at the bottom (prize). 塞 has 土 = block / stuff."],
+["与","于","yǔ","and / with (formal)","华文","与 = and. 于 = at / in."],
+["制衡","制衡 (衡 miswritten)","zhì héng","checks and balances","华文","衡 = 彳 + 鱼-shape + 亍. Write it slowly once."],
+["那么","那怎","nà me","so, that much","华文","么 = ending. 怎 = how."],
+["浮游生物","乳生生物 / 浮生","fú yóu shēng wù","plankton","地理","浮 float + 游 swim — both 氵, because they live in water. Wrong on EVERY paper."],
+["延伸","延深 / 延申","yán shēn","extend","地理","伸 has 亻 = stretch out (伸手). 深 = deep."],
+["通常","同常","tōng cháng","usually","地理","通 = general / through. 同 = same."],
+["个人","各人","gè rén","individual","地理","个 = one / individual. 各 = each."],
+["液化天然气","液态","yè huà tiān rán qì","liquefied natural gas (LNG)","地理","-化 = turned into → 液化 = made liquid. 液态 = liquid state."],
+["坡度","波度","pō dù","slope gradient","地理","坡 has 土 = slope of land. 波 has 氵 = wave."],
+["捕鱼","哺鱼","bǔ yú","to fish","地理","捕 has 扌 = catch with hands. 哺 has 口 = feed (哺乳). Wrong 4+ times."],
+["海底","海低","hǎi dǐ","seabed","地理","底 has 广 = bottom. 低 = low."],
+["目的","目地","mù dì","purpose","地理","的 (dì) = target / bullseye. 地 = ground."],
+["贷款","代kuan","dài kuǎn","loan","地理","贷 = 代 + 贝 (money) = lend money. 款 = a sum of money."],
+["平缓","平暖","píng huǎn","gentle (slope)","地理","缓 has 纟 = slow / gentle. 暖 has 日 = warm."],
+["近海","进海","jìn hǎi","coastal waters","地理","近 = near. 进 = enter. (See 进入 in 科学.)"],
+["鱼礁","鱼石","yú jiāo","fish reef","地理","礁 = 石 + 焦 = reef."],
+["砂拉越","沙拉越","shā lā yuè","Sarawak","地理","Textbook uses 砂 (石). Rote."],
+["推广","推扩","tuī guǎng","promote, popularise","地理","广 = wide → spread widely. 扩 = expand (扩大)."],
+["腐蚀","腐化","fǔ shí","corrode","地理","蚀 = eaten away. 腐化 = moral corruption."],
+["意识","意知","yì shí","awareness","地理","识 has 讠 = recognise. Fixed word: 意识."],
+["危害","隐害","wēi hài","harm","地理","危 = danger. 隐 = hidden."],
+["罚款","罚剥","fá kuǎn","a fine (penalty)","地理","款 = a sum of money (贷款 too)."],
+["培养","培美","péi yǎng","cultivate, train","地理","养 = raise / nurture. 美 = beautiful — same top, different bottom."],
+["峇眼拿督","岩眼拿督","bā yǎn ná dū","Bagan Datuk (place)","地理","峇 = a 字 used in Malay place names. Rote."],
+["靠近","靠边","kào jìn","bring near","科学","近 = near. 边 = side."],
+["拿开","那开","ná kāi","take away","科学","拿 = 合 + 手 = hold. 那 = that."],
+["合拢","关闭 / 合闭","hé lǒng","close together (electroscope leaves)","科学","拢 has 扌 = gather together. 关闭 = shut (a door)."],
+["变厚","变后","biàn hòu","become thicker","科学","厚 = thick. 后 = behind."],
+["成像","成现","chéng xiàng","form an image","科学","像 has 亻 = likeness / image. 现 = appear."],
+["松弛","松ci","sōng chí","slack, relaxed","科学","弛 has 弓 = loosen a bowstring."],
+["进入","近入","jìn rù","enter","科学","进 = enter. 近 = near. You swapped this pair both ways (近海)."],
+["利雅沙","利亚沙","lì yǎ shā","Riayat Shah (Sultan)","历史","Name. 雅, not 亚. Rote."],
+["郡县","君县","jùn xiàn","commandery-county system","历史","郡 has 阝 on the right (= a city / region). 君 = ruler."],
+["占领","战领","zhàn lǐng","occupy","历史","占 = occupy. 战 = war."],
+["史称","史名","shǐ chēng","known in history as","历史","称 = called. Fixed word: 史称."],
+["蜀","属","shǔ","Shu (state)","历史","蜀 = the state. 属 = belong to. Rote."],
+["定期","定其","dìng qī","regularly","历史","期 has 月 = a time period. 其 = its."],
+["停留","停流","tíng liú","stay","历史","留 = stay. 流 has 氵 = flow."],
+["沿用","修用","yán yòng","continue using","历史","沿 has 氵 = follow along (沿海). 修 = repair."],
+["汉姓","汉性","hàn xìng","Han surname","历史","姓 has 女 — surnames came from ancient clans. 性 has 忄 = nature / gender."],
+["连续","连继","lián xù","continuous","历史","Both 纟 (thread goes on). Rote pair: 连续 / 继续."],
+["史思明","史思民","shǐ sī míng","Shi Siming (rebel)","历史","Name. 明, not 民."],
+["强干弱枝","强干弱技","qiáng gàn ruò zhī","strong centre, weak regions","历史","Tree picture: 干 = trunk, 枝 (木) = branches. 技 has 扌 = skill."],
+["造纸术","制纸术","zào zhǐ shù","papermaking","历史","Fixed 四大发明 word: 造纸术. Lost marks on the REAL final."],
+["焚书坑儒","焚书抗儒","fén shū kēng rú","burning books, burying scholars","历史","坑 has 土 = pit (buried in pits). 抗 has 扌 = resist."],
+["葡萄牙","葡萄雅","pú táo yá","Portugal","历史","牙. Rote."],
+["制度","治度","zhì dù","system","历史","制 = set rules (制定). 治 = govern."],
+["严禁","严襟","yán jìn","strictly forbid","历史","禁 = forbid. 襟 has 衤 = lapel. You swapped this pair both ways (沾襟)!"],
+["信仰","信养","xìn yǎng","faith, belief","历史","仰 has 亻 = look up to. 养 = raise."],
+["金花","金华","jīn huā","golden flowers (tribute to Siam)","历史","花 has 艹 = flower. 华 = splendid."],
+["目睹","missed 目赌","mù dǔ","witness with your own eyes","改错字","睹 has 目 = see. 赌 has 贝 = gamble. REAL 期末."],
+["烦恼","missed 烦脑","fán nǎo","worried, annoyed","改错字","恼 has 忄 = a feeling. 脑 has 月 = brain. REAL 期末."],
+["云俱黑","missed 云具黑","yún jù hēi","the clouds are all dark (杜甫)","改错字","俱 has 亻 = all (俱全). 具 = tool. REAL 期末."],
+["独明","missed 独名","dú míng","shining alone (江船火独明)","改错字","明 = bright. 名 = name. Missed 4 times."],
+["浪费","missed 浪废","làng fèi","waste","改错字","费 has 贝 = spend money. 废 = abandoned."],
+["嘱托","missed 瞩托","zhǔ tuō","entrust","改错字","嘱 has 口 = tell. 瞩 has 目 = gaze."],
+["攀登","missed 扳登","pān dēng","climb","改错字","攀 has 手 at the bottom = climb. 扳 = pull."],
+["蹒跚","missed 盘跚","pán shān","walk unsteadily","改错字","蹒 has 足 (foot) like 跚. 盘 = plate."],
+["惭愧","missed 渐愧","cán kuì","ashamed","改错字","惭 has 忄 like 愧. 渐 has 氵 = gradually."],
+["淡妆","missed 淡装","dàn zhuāng","light makeup","改错字","妆 has 女 = makeup. 装 has 衣 = clothes."]
+];
+const SUBJ=["全部","华文","地理","科学","历史","改错字","☆"];
+const K="cbz-stars";
+let stars=new Set(); try{stars=new Set(JSON.parse(localStorage.getItem(K)||"[]"))}catch(e){}
+const saveStars=()=>{try{localStorage.setItem(K,JSON.stringify([...stars]))}catch(e){}};
+let filt="全部", order=D.map((_,i)=>i), deck=[], pos=0, flipped=false, mode="card";
+const $=id=>document.getElementById(id);
+$("total").textContent=D.length+" 张";
+
+function build(){
+  deck=order.filter(i=>filt==="全部"||(filt==="☆"?stars.has(D[i][0]):D[i][4]===filt));
+  if(pos>=deck.length)pos=0; flipped=false; render();
+}
+function chips(){
+  $("chips").innerHTML="";
+  SUBJ.forEach(s=>{const b=document.createElement("button");b.className="chip";b.textContent=s;
+    b.setAttribute("aria-pressed",s===filt);b.onclick=()=>{filt=s;pos=0;chips();build()};$("chips").appendChild(b)});
+}
+function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="zh-CN";u.rate=.8;speechSynthesis.speak(u)}catch(e){}}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function starBtn(w){return `<button class="starbtn${stars.has(w)?" on":""}" data-star="${esc(w)}" aria-label="Star">${stars.has(w)?"★":"☆"}</button>`}
+function render(){
+  if(mode==="card"){
+    const c=$("card");
+    if(!deck.length){c.innerHTML=`<div class="empty">${filt==="☆"?"No starred cards yet. Tap ☆ on a card you got wrong.":"No cards."}</div>`;return}
+    const [w,x,p,e,s,y]=D[deck[pos]];
+    const head=`<span class="tag">${s}</span><span class="count">${pos+1} / ${deck.length}</span>${starBtn(w)}`;
+    c.innerHTML=flipped
+      ? `${head}<div class="word">${w}</div><div class="wrong">你写过：<s>${esc(x)}</s></div><div class="why">${esc(y)}</div><button class="say" data-say="${esc(w)}">🔊 读</button>`
+      : `${head}<div class="py">${p}</div><div class="en">${esc(e)}</div><div class="hint">✍️ write it, then tap</div>`;
+  } else {
+    $("list").innerHTML=deck.length?deck.map(i=>{const [w,x,p,e,s,y]=D[i];return `<div class="item"><div class="meta"><div class="py2">${p}</div><div class="en2">${esc(e)} · ${s}</div></div>${starBtn(w)}<div class="cover" role="button" tabindex="0"><span class="in"><span class="w2">${w}</span><span class="x2">not ${esc(x)}</span><span class="y2">${esc(y)}</span></span></div></div>`}).join(""):`<div class="empty">No cards.</div>`;
+  }
+}
+document.addEventListener("click",ev=>{
+  const st=ev.target.closest("[data-star]");
+  if(st){ev.stopPropagation();const w=st.dataset.star;stars.has(w)?stars.delete(w):stars.add(w);saveStars();
+    if(filt==="☆")build();else render();return}
+  const sy=ev.target.closest("[data-say]"); if(sy){ev.stopPropagation();speak(sy.dataset.say);return}
+  const cv=ev.target.closest(".cover"); if(cv){cv.classList.toggle("open");return}
+});
+const flip=()=>{if(deck.length){flipped=!flipped;render()}};
+const go=d=>{if(deck.length){pos=(pos+d+deck.length)%deck.length;flipped=false;render()}};
+$("card").addEventListener("click",ev=>{if(!ev.target.closest("button"))flip()});
+$("card").addEventListener("keydown",ev=>{if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();flip()}});
+$("flip").onclick=flip; $("prev").onclick=()=>go(-1); $("next").onclick=()=>go(1);
+document.addEventListener("keydown",ev=>{if(mode!=="card")return;if(ev.key==="ArrowLeft")go(-1);if(ev.key==="ArrowRight")go(1)});
+let sx=null,sy0=null;
+$("card").addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy0=e.touches[0].clientY},{passive:true});
+$("card").addEventListener("touchend",e=>{if(sx===null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy0;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){e.preventDefault();go(dx<0?1:-1)}sx=null});
+$("shuffle").onclick=()=>{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;build()};
+function setMode(m){mode=m;$("mCard").setAttribute("aria-pressed",m==="card");$("mList").setAttribute("aria-pressed",m==="list");
+  $("cardView").hidden=m!=="card";$("listView").hidden=m!=="list";render()}
+$("mCard").onclick=()=>setMode("card"); $("mList").onclick=()=>setMode("list");
+$("openAll").onclick=()=>document.querySelectorAll(".cover").forEach(c=>c.classList.add("open"));
+$("closeAll").onclick=()=>document.querySelectorAll(".cover").forEach(c=>c.classList.remove("open"));
+chips(); build();
+</script>

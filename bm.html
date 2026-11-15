@@ -1,0 +1,413 @@
+<title>Kad Imbas BM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;600&display=swap">
+<style>
+/* Layout: phone-first, fills exactly one screen (100dvh) - header, two side-scrolling chip rows, progress bar, one big swipe card, hint line at the thumb */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --fg:#17202b; --muted:#5b6876; --line:#d3dae2;
+  --accent:#1d5fa8; --accent-fg:#ffffff; --good:#1f7a4d; --bad:#b53a2e; --back:#f6efe1; --star:#c98a00;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --zh:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161d; --surface:#1a222c; --fg:#e7ecf1; --muted:#97a3b0; --line:#2c3743;
+  --accent:#6ea8ec; --accent-fg:#0d1620; --good:#4cc08a; --bad:#ec7a6c; --back:#262019; --star:#f2c14e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161d; --surface:#1a222c; --fg:#e7ecf1; --muted:#97a3b0; --line:#2c3743;
+  --accent:#6ea8ec; --accent-fg:#0d1620; --good:#4cc08a; --bad:#ec7a6c; --back:#262019; --star:#f2c14e; color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overscroll-behavior:none}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent}
+.app{max-width:520px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:10px;overflow:hidden;box-sizing:border-box;
+  padding:max(10px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex:none}
+h1{font-family:var(--display);font-weight:700;font-size:1.2rem;margin:0;letter-spacing:-.01em}
+.count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+.chips{display:flex;gap:6px;overflow-x:auto;flex:none;scrollbar-width:none;margin-inline:-14px;padding-inline:14px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;white-space:nowrap;font:inherit;font-size:.85rem;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);
+  border-radius:999px;padding:7px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.chip:focus-visible,.btn:focus-visible,.card:focus-visible,.star:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chip small{opacity:.7;font-variant-numeric:tabular-nums}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;flex:none}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.stage{flex:1;min-height:0;display:flex;flex-direction:column}
+.card{position:relative;flex:1;min-height:0;perspective:1200px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;text-align:center}
+.card.fly{transition:transform .23s ease-in}
+.card.snap{transition:transform .2s}
+.inner{position:absolute;inset:0;transition:transform .45s;transform-style:preserve-3d}
+.card.flipped .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;overflow:hidden;
+  border:1.5px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:48px 20px 40px;box-sizing:border-box}
+.face.back{transform:rotateY(180deg);background:var(--back)}
+.star{position:absolute;top:6px;right:6px;z-index:3;width:46px;height:46px;border:0;background:none;font-size:1.7rem;line-height:1;color:var(--muted);cursor:pointer;border-radius:50%;padding:0}
+.star[aria-pressed="true"]{color:var(--star)}
+.stamp{position:absolute;top:22%;z-index:2;padding:6px 12px;border:3px solid;border-radius:10px;font-family:var(--display);font-weight:700;font-size:1.3rem;
+  opacity:0;pointer-events:none;background:var(--surface)}
+.stamp.good{left:16px;color:var(--good);border-color:var(--good);transform:rotate(-12deg)}
+.stamp.bad{right:16px;color:var(--bad);border-color:var(--bad);transform:rotate(12deg)}
+.pic{width:min(104px,18vh);height:min(104px,18vh);flex:none;color:var(--fg)}
+.pic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.tag{position:absolute;top:16px;left:16px;right:60px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.hint{position:absolute;bottom:14px;left:0;right:0;font-size:.8rem;color:var(--muted)}
+.word{font-size:clamp(1.6rem,8vw,2.1rem);line-height:1.2;overflow-wrap:anywhere;text-wrap:balance}
+.word.bm{font-family:var(--display);font-weight:700}
+.word.zh{font-family:var(--zh);font-weight:600}
+.sub{font-size:1.05rem;color:var(--muted);overflow-wrap:anywhere}
+.sub.zh{font-family:var(--zh)}
+.nota{font-size:.95rem;border-top:1px dashed var(--line);padding-top:10px;max-width:100%;overflow-wrap:anywhere;font-family:var(--zh)}
+.swipehint{flex:none;display:flex;justify-content:space-between;font-size:.9rem;font-weight:600;padding:2px 6px}
+.swipehint .l{color:var(--bad)} .swipehint .r{color:var(--good)}
+.btn{font:inherit;font-weight:600;font-size:1rem;border-radius:14px;padding:15px 10px;cursor:pointer;border:2px solid transparent;width:100%}
+.btn.plain{background:var(--accent);color:var(--accent-fg)}
+.done{flex:1;min-height:0;overflow-y:auto;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.done h2{font-family:var(--display);font-size:1.6rem;margin:0}
+.done p{margin:0;color:var(--muted)}
+.missed{list-style:none;padding:0;margin:0;width:100%;text-align:left;border-top:1px solid var(--line)}
+.missed li{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.missed li span:last-child{font-family:var(--zh);color:var(--muted);text-align:right}
+@media (prefers-reduced-motion: reduce){.inner,.bar i,.card.fly,.card.snap{transition:none}}
+</style>
+
+<div class="app">
+  <header><h1>Kad Imbas BM</h1><span class="count" id="count"></span></header>
+
+  <div class="chips" id="dirChips" role="group" aria-label="Arah">
+    <button class="chip" data-dir="bm" id="dir-bm">BM → 中文</button>
+    <button class="chip" data-dir="zh" id="dir-zh">中文 → BM</button>
+    <button class="chip" data-dir="mix" id="dir-mix">Campur</button>
+  </div>
+  <div class="chips" id="groupChips" role="group" aria-label="Topik"></div>
+
+  <div class="bar"><i id="bar"></i></div>
+
+  <div class="stage" id="stage">
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Kad: ketik untuk terbalikkan, leret kanan = tahu, leret kiri = belum tahu">
+      <button class="star" id="star" aria-label="Bintang perkataan ini" aria-pressed="false">☆</button>
+      <span class="stamp good" id="stampGood">TAHU ✓</span>
+      <span class="stamp bad" id="stampBad">✗ BELUM</span>
+      <div class="inner" id="inner">
+        <div class="face front"><span class="tag" id="tagF"></span><div id="front"></div><span class="hint">ketik untuk lihat jawapan</span></div>
+        <div class="face back"><span class="tag" id="tagB"></span><div id="back"></div></div>
+      </div>
+    </div>
+    <div class="done" id="done" hidden></div>
+  </div>
+
+  <div class="swipehint" id="swipehint"><span class="l">← Belum tahu</span><span class="r">Tahu →</span></div>
+</div>
+
+<script>
+// [Perkataan, 中文意思, Nota (blank = nothing extra), group]
+const G={k2:"Peperiksaan",cp:"Cerpen",sj:"Sajak",sy:"Syair",nl:"Sastera & nilai",hs:"Hampir sama makna",bm:"Banyak makna",pb:"Penjodoh bilangan",pr:"Peribahasa",bq:"BigCQ 1",bi:"Bahasa istana"};
+const W=[
+["kesempatan / peluang","机会","","k2"],["keangkuhan","骄傲、傲慢","","k2"],["pelanggan","顾客","","k2"],
+["adab","礼貌、礼节","不是 \"attitude\"","k2"],["sejak","自从","","k2"],["seorang diri","独自","= sendiri","k2"],
+["demi","为了","= untuk；\"demi untuk\" = lewah（重复）","k2"],["menderma","捐献、捐款","","k2"],
+["pendalaman","加深","≠ pedalaman","k2"],["pedalaman","内陆地区","daerah jauh dari pantai","k2"],
+["pendapatan","收入","≠ pendapat","k2"],["pendapat","意见、看法","= pandangan","k2"],
+["berpeluang","有机会","","cp"],["teguh","坚固","","cp"],["berderetan","排成一排","","cp"],["sesekali","偶尔","","cp"],
+["chalet","度假屋","","cp"],["memperindah","美化","","cp"],["ombak","海浪","","cp"],["bertalu-talu","连续不断","","cp"],
+["menghempas","拍打","","cp"],["timbunan","一堆","","cp"],["berserakan","散落满地","","cp"],["menjijikkan","令人恶心","","cp"],
+["mengerumuni","围绕、围住","","cp"],["menyelongkar","翻找","","cp"],["keprihatinan","关心、关怀","","cp"],
+["terpahat","铭刻（在心）","terpahat erat dalam hati","cp"],
+["wang saku","零用钱","","sj"],["berhemat","节俭","","sj"],["tabung","扑满、储蓄罐","","sj"],["hati riang","心情愉快","","sj"],
+["berbelanja","花钱、消费","","sj"],["amalan mulia","良好的行为","= perbuatan yang baik","sj"],["persediaan","准备","","sj"],
+["hutang","债务","","sj"],["hutang sekeliling pinggang","债台高筑","","sj"],["tenang","平静","","sj"],
+["celik","懂得","celik IT = 懂电脑（≠ pandai 聪明）","sj"],
+["manfaatkan","利用","","sy"],["perkembangan","发展","","sy"],["petani","农民","","sy"],
+["pesat","迅速","不是 \"improve\"；perkembangan pesat = 迅速发展","sy"],["cabaran","挑战","","sy"],
+["menimba ilmu","求知","","sy"],["mengaplikasikan","应用","","sy"],["alat ciptaan","发明的工具","","sy"],
+["persoalan","议题","sastera term","nl"],["nilai","价值观","sastera term","nl"],["kerajinan","勤奋","nilai","nl"],
+["tanggungjawab","责任感","nilai","nl"],["sikap rasional","理性态度","nilai","nl"],["pernyataan","陈述","ayat penyata","nl"],
+["busuk","臭","general bad smell","hs"],["hangit","烧焦味","nasi / kuih dimasak terlalu lama","hs"],
+["tengik","油臭味","minyak lama disimpan","hs"],["beku","凝固、结冰","pejal / keras","hs"],["kaku","僵硬","tidak boleh dilentur","hs"],
+["kejur","僵直","tubuh mayat","hs"],["belah","劈开、裂开","sebelah = 一边","hs"],
+["bengkok","弯曲；不诚实","jalan bengkok / orang bengkok","hs"],["bongkok","驼背","只用于 badan","hs"],
+["condong","倾斜；偏向","matahari condong / menyebelahi","hs"],["serong","歪斜；不正直","tidak lurus","hs"],
+["patah","折断","batang keras dan panjang (pensel)","hs"],["putus","断","tali / hubungan; habis","hs"],
+["retak","裂痕","pinggan retak; kasih sayang retak","hs"],["tegang","紧绷；关系紧张","tali / otot / suasana","hs"],
+["pesakit","病人","orang yang sakit","hs"],["penyakit","疾病","≠ pesakit","hs"],["meninggal","去世","= mati","hs"],
+["meninggalkan","离开；留下；遗留","banyak makna","hs"],["banyak","多（东西）","bukan sedikit","hs"],
+["ramai","（人）多；热闹","untuk orang / suasana","hs"],["belok","转弯","kenderaan","hs"],["blok","大楼；集团；阻挡","≠ belok","hs"],
+["menonton","观看","wayang / perlawanan","hs"],["menuntun","牵着走、引导","≠ menonton","hs"],
+["dingin","冷；冷清；冷淡","3 makna","bm"],["hangat","热；过头；热闹","3 makna","bm"],["jalan","道路；方法；移动","3 makna","bm"],
+["kepala","头；顶部；首领","3 makna","bm"],["lembut","软；温和；柔美","3 makna","bm"],["masak","成熟；煮熟；烹饪","3 makna","bm"],
+["pandu","向导；童军；驾驶","3 makna","bm"],["segar","精神；清爽；茂盛","3 makna","bm"],["tajam","锋利；聪明；敏锐","3 makna","bm"],
+["usang","干瘪；陈旧；过时","3 makna","bm"],
+["bakul","篮（量词）","durian / limau / sayur","pb"],["bungkus","包（量词）","nasi lemak / kari","pb"],
+["ikat","捆、把（量词）","kayu / sayur sawi","pb"],["naskhah","本、份（量词）","buku / majalah / surat khabar","pb"],
+["utas","条（量词）","tali / rantai / jam tangan","pb"],["bidang","片、块（量词）","sawah / layar","pb"],
+["umpan","诱饵","","pr"],["terhantuk","撞到（头）","","pr"],["tengadah","抬头","","pr"],["rambut","头发","","pr"],["tepung","面粉","","pr"],
+["dakwat","墨水","","pr"],["teladan","榜样","","pr"],["sempadan","边界；警戒","","pr"],["ruyung","硬树皮","","pr"],["sagu","西米","","pr"],
+["cermat","细心；节俭","","pr"],["jimat","节省","","pr"],["ukur","量","","pr"],["ubi","薯","","pr"],["batas","田埂","","pr"],
+["budi","恩惠；善行","","pr"],["balas","报答","","pr"],["tuah","运气","","pr"],["daya","办法","","pr"],["dalih","借口","","pr"],
+["itik","鸭子","","pr"],["berenang","游泳","","pr"],["memanjat","攀爬","","pr"],["tupai","松鼠","","pr"],["cempedak","尖蜜拉","","pr"],
+["nangka","菠萝蜜","","pr"],["tersepit","被夹住","","pr"],["pagar","篱笆","","pr"],
+["bimbang","担心","perasaan + akan：bimbang akan","bq"],["kagum","佩服、惊叹","perasaan + akan：kagum akan","bq"],
+["disampaikan","被颁发；被转达","disampaikan kepada (penerima) oleh (pemberi)","bq"],
+["para","各位（人的复数）","para pengunjung / para hadirin","bq"],["pengunjung","访客、参观者","","bq"],
+["tertib","有秩序、守规矩","beratur dengan tertib","bq"],["senaman","运动、锻炼","","bq"],["kerap","经常","= selalu","bq"],
+["jantung","心脏","≠ hati（肝；心情）","bq"],["mahir","熟练、精通","mahir dalam bidang（抽象 → dalam）","bq"],
+["sabar","有耐心","","bq"],["bersabar","保持耐心、忍耐","","bq"],["pesta","节庆；展会","pesta buku = 书展","bq"],
+["merawat","治疗；照顾（病人）","doktor merawat pesakit","bq"],
+["perdana menteri","首相","不是 menteri perdana（特例）","bq"],
+["bahasa istana","宫廷用语","Rakyat → Raja：patik + Tuanku；Raja → rakyat：beta","bi"],
+["patik","我（对王说）","不是 hamba / saya","bi"],["beta","我（王自称）","","bi"],["Tuanku","陛下（称呼王）","","bi"],
+["santap","（王）吃","= makan","bi"],["beradu","（王）睡","= tidur","bi"],["bersiram","（王）洗澡","= mandi","bi"],
+["gering","（王）生病","= sakit","bi"],["mangkat","（王）驾崩","= mati","bi"],["titah","（王）命令、说话","= perintah / kata","bi"],
+["murka","（王）发怒","= marah","bi"],["berangkat","（王）起驾、出发","= pergi","bi"],
+["menjunjung kasih","谢恩","= terima kasih（对王）","bi"]
+];
+
+// Line drawings, 100×100 box, stroked in the text colour
+const T=(x,y,s,t)=>'<text x="'+x+'" y="'+y+'" font-size="'+s+'" fill="currentColor" stroke="none">'+t+'</text>';
+const DOT='fill="currentColor" stroke="none"';
+const PIC={
+"bahasa istana":'<path d="M50 6L94 92H6z"/><path d="M28 50h44"/>'+T(39,30,9,"Raja")+T(38,42,9,"beta")+T(32,68,9,"Rakyat")+T(35,82,9,"patik"),
+"patik":'<path d="M50 6L94 92H6z"/><path d="M28 50h44"/>'+T(32,68,9,"Rakyat")+T(35,82,9,"patik"),
+"beta":'<path d="M50 6L94 92H6z"/><path d="M28 50h44"/>'+T(39,30,9,"Raja")+T(38,42,9,"beta"),
+"jantung":'<path d="M50 86L18 53C5 38 15 15 35 20c8 2 12 8 15 12 3-4 7-10 15-12 20-5 30 18 17 33z"/><path d="M14 52h18l6-12 8 24 6-12h34"/>',
+"tertib":'<circle cx="20" cy="30" r="6"/><path d="M20 36v26"/><circle cx="40" cy="30" r="6"/><path d="M40 36v26"/><circle cx="60" cy="30" r="6"/><path d="M60 36v26"/><circle cx="80" cy="30" r="6"/><path d="M80 36v26"/><path d="M8 72h84"/>',
+"menderma":'<rect x="25" y="50" width="50" height="35" rx="3"/><path d="M40 56h20"/><circle cx="50" cy="28" r="9"/><path d="M50 40v8"/>',
+"seorang diri":'<circle cx="50" cy="28" r="8"/><path d="M50 36v27M50 63l-10 22M50 63l10 22M50 45l-12 10M50 45l12 10"/><path d="M8 90h84" stroke-dasharray="3 7"/>',
+"pedalaman":'<path d="M18 8c8 10-8 20 0 30s-8 20 0 30-8 20 0 25"/>'+T(0,52,10,"laut")+'<path d="M66 58l10-10 10 10v16H66z"/><path d="M30 64h30" stroke-dasharray="3 4"/>',
+"pendalaman":'<path d="M12 28h76M12 48h76M12 68h76" opacity=".35"/><path d="M50 10v72M40 72l10 12 10-12"/>',
+"pendapatan":'<rect x="20" y="45" width="60" height="38" rx="5"/><path d="M60 58h20v12H60z"/><circle cx="40" cy="22" r="8"/><path d="M40 32v8M35 36l5 5 5-5"/>',
+"pendapat":'<path d="M12 18h76v45H45l-15 15V63H12z"/><path d="M50 26a9 9 0 0 1 5 16v6H45v-6a9 9 0 0 1 5-16z"/>',
+"berderetan":'<path d="M8 80V55l9-9 9 9v25M30 80V55l9-9 9 9v25M52 80V55l9-9 9 9v25M74 80V55l9-9 9 9v25M4 80h92"/>',
+"chalet":'<path d="M30 60V40l20-15 20 15v20zM35 60v15M65 60v15"/><path d="M5 85c8-5 15-5 22 0s15 5 22 0 15-5 22 0 15 5 24 0"/><circle cx="84" cy="16" r="7"/>',
+"memperindah":'<path d="M38 60h24l-4 28H42z"/><path d="M50 60V36"/><circle cx="50" cy="27" r="8"/><path d="M50 48c-10-1-14-8-14-12 8 0 14 6 14 12"/>',
+"ombak":'<path d="M5 42c10-12 20-12 30 0s20 12 30 0 20-12 30 0"/><path d="M5 64c10-12 20-12 30 0s20 12 30 0 20-12 30 0"/>',
+"menghempas":'<path d="M60 90V60l15-12 20 10v32z"/><path d="M5 82c15 0 25-30 45-25 8 2 10 10 5 14"/><path d="M60 40l-4-10M70 36l2-12M80 40l8-8"/>',
+"timbunan":'<circle cx="30" cy="78" r="10"/><circle cx="50" cy="78" r="10"/><circle cx="70" cy="78" r="10"/><circle cx="40" cy="60" r="10"/><circle cx="60" cy="60" r="10"/><circle cx="50" cy="42" r="10"/>',
+"berserakan":'<rect x="12" y="20" width="12" height="7" transform="rotate(20 18 23)"/><circle cx="70" cy="25" r="5"/><path d="M40 50l10 5M80 58l-8 8M18 75l10-3"/><rect x="55" y="75" width="12" height="7" transform="rotate(-30 61 78)"/><circle cx="35" cy="36" r="3"/><circle cx="86" cy="86" r="3"/>',
+"menjijikkan":'<circle cx="50" cy="50" r="30"/><path d="M37 44l7-3M63 44l-7-3M36 66c4-4 8 2 12-2s8 2 12-2 4 1 5 1"/>',
+"mengerumuni":'<circle cx="50" cy="55" r="12"/><g '+DOT+'><circle cx="25" cy="35" r="3"/><circle cx="75" cy="35" r="3"/><circle cx="20" cy="65" r="3"/><circle cx="80" cy="68" r="3"/><circle cx="50" cy="24" r="3"/><circle cx="36" cy="85" r="3"/><circle cx="64" cy="86" r="3"/></g>',
+"menyelongkar":'<path d="M20 55h60v32H20zM20 55l-8-12M80 55l8-12"/><path d="M50 12v34M44 40l6 6 6-6"/><path d="M30 32l-6-8M70 32l6-8"/>',
+"keprihatinan":'<path d="M50 68c-15-12-24-19-20-29 4-7 14-6 20 2 6-8 16-9 20-2 4 10-5 17-20 29z"/><path d="M15 55c0 20 15 30 35 30s35-10 35-30"/>',
+"terpahat":'<rect x="18" y="40" width="60" height="46"/><path d="M48 74c-8-6-14-10-11-15 2-4 8-3 11 1 3-4 9-5 11-1 3 5-3 9-11 15z"/><path d="M72 32l14-20" stroke-width="5"/>',
+"wang saku":'<ellipse cx="50" cy="76" rx="22" ry="7"/><path d="M28 76V66M72 76V66"/><ellipse cx="50" cy="66" rx="22" ry="7"/><path d="M28 66V56M72 66V56"/><ellipse cx="50" cy="56" rx="22" ry="7"/>',
+"tabung":'<ellipse cx="50" cy="58" rx="30" ry="22"/><path d="M42 37h16"/><circle cx="68" cy="52" r="2" '+DOT+'/><path d="M80 52h8v10h-8M35 78v8M65 78v8M20 52c-6 0-8-6-4-8"/>',
+"hati riang":'<path d="M50 86L18 53C5 38 15 15 35 20c8 2 12 8 15 12 3-4 7-10 15-12 20-5 30 18 17 33z"/><path d="M38 56c6 8 18 8 24 0"/><circle cx="40" cy="43" r="2" '+DOT+'/><circle cx="60" cy="43" r="2" '+DOT+'/>',
+"hutang":'<path d="M25 12h40l12 12v64H25z"/>'+T(32,58,16,"−RM"),
+"persediaan":'<rect x="25" y="12" width="50" height="76" rx="3"/><path d="M33 30l4 4 7-8M50 30h18M33 50l4 4 7-8M50 50h18M33 70l4 4 7-8M50 70h18"/>',
+"tenang":'<path d="M10 66h80M22 76h56M34 86h32"/><circle cx="50" cy="36" r="12"/>',
+"celik":'<path d="M8 50c20-26 64-26 84 0-20 26-64 26-84 0z"/><circle cx="50" cy="50" r="11"/><circle cx="50" cy="50" r="4" '+DOT+'/>',
+"perkembangan":'<path d="M50 90V40M50 62c-15 0-20-10-20-20 12 0 20 8 20 20M50 50c15 0 20-12 20-22-12 0-20 10-20 22"/><path d="M30 90h40"/>',
+"petani":'<path d="M28 30l22-14 22 14z"/><circle cx="50" cy="38" r="7"/><path d="M50 45v22M50 67l-8 20M50 67l8 20M50 52l15-6M62 30l14 58M70 86h12"/>',
+"pesat":'<path d="M10 88h82M10 88V10" opacity=".35"/><path d="M15 82c30-2 45-20 60-62M64 24l11-5 3 12"/>',
+"cabaran":'<path d="M8 86l30-52 15 20 12-15 27 47z"/><path d="M38 34V12l13 6-13 6"/>',
+"menimba ilmu":'<path d="M18 12h64M50 12v26"/><path d="M38 38h24l-4 16H42z"/><path d="M20 60h60v30H20z"/>'+T(44,82,12,"知"),
+"alat ciptaan":'<path d="M50 12a22 22 0 0 1 13 40v12H37V52a22 22 0 0 1 13-40z"/><path d="M40 72h20M42 80h16"/>',
+"busuk":'<path d="M18 62c15-15 40-15 55 0-15 15-40 15-55 0zM73 62l13-10v20z"/><path d="M33 40c-4-5 4-8 0-13M48 38c-4-5 4-8 0-13M63 40c-4-5 4-8 0-13"/>',
+"hangit":'<path d="M22 55h56l-6 30H28z"/><path d="M14 55h72"/><path d="M38 46c-6-8 6-12 0-20M52 46c-6-8 6-12 0-20M66 46c-6-8 6-12 0-20" stroke-width="6" opacity=".7"/>',
+"tengik":'<path d="M42 12h16v12l8 10v52H34V34l8-10z"/><path d="M34 52h32"/>'+T(41,74,14,"油")+'<path d="M74 24c-3-4 3-6 0-10M83 30c-3-4 3-6 0-10"/>',
+"beku":'<path d="M25 35l25-12 25 12v35L50 82 25 70zM25 35l25 12 25-12M50 47v35"/>',
+"kaku":'<path d="M12 50h76" stroke-width="8"/><path d="M12 28l8 12M88 28l-8 12M12 72l8-12M88 72l-8-12"/>'+T(36,30,11,"✗ bend"),
+"belah":'<path d="M22 88V46h22v42M56 88V46h22v42"/><path d="M50 40V12M50 12l16 8-16 8"/>',
+"bengkok":'<path d="M28 88V52c0-12 10-18 26-18h24"/><path d="M18 88h20"/>',
+"bongkok":'<circle cx="64" cy="30" r="8"/><path d="M59 38c-16 4-21 15-19 26M40 64l-8 23M40 64l8 23M49 46l13 14M62 60v28"/>',
+"condong":'<path d="M40 88l14-72h14l-6 72z"/><path d="M12 88h76"/><path d="M48 50l14 2M44 70l15 1" opacity=".5"/>',
+"serong":'<rect x="24" y="28" width="52" height="40" transform="rotate(-15 50 48)"/><path d="M50 14l-14 18M50 14l14 10"/>',
+"patah":'<path d="M8 58l32-9 3 10-32 9zM8 58l-5 7 8 3"/><path d="M54 46l36-10 3 10-36 10z"/><path d="M45 50l4-7M47 58l7-3"/>',
+"putus":'<path d="M5 50h34M61 50h34" stroke-width="5"/><path d="M39 50l6-6M39 50h7M39 50l6 6M61 50l-6-6M61 50h-7M61 50l-6 6"/>',
+"retak":'<ellipse cx="50" cy="55" rx="38" ry="20"/><ellipse cx="50" cy="55" rx="24" ry="12"/><path d="M50 35l-5 10 7 6-4 10 6 8 -3 6"/>',
+"tegang":'<path d="M15 28v60M85 28v60M15 45h70"/><path d="M8 38l-5 7 5 7M92 38l5 7-5 7"/>',
+"pesakit":'<path d="M8 76h84M8 58v32M92 66v24"/><circle cx="20" cy="56" r="7"/><path d="M28 62h58v14H28z"/><path d="M70 28h12M76 22v12"/>',
+"penyakit":'<circle cx="50" cy="50" r="18"/><path d="M50 32V20M50 68v12M32 50H20M68 50h12M37 37l-8-8M63 63l8 8M63 37l8-8M37 63l-8 8"/><circle cx="44" cy="46" r="3"/><circle cx="56" cy="55" r="4"/>',
+"banyak":'<circle cx="22" cy="72" r="9"/><circle cx="42" cy="72" r="9"/><circle cx="62" cy="72" r="9"/><circle cx="82" cy="72" r="9"/><circle cx="32" cy="54" r="9"/><circle cx="52" cy="54" r="9"/><circle cx="72" cy="54" r="9"/><circle cx="42" cy="36" r="9"/><circle cx="62" cy="36" r="9"/>',
+"ramai":'<circle cx="20" cy="36" r="7"/><path d="M8 62c0-10 24-10 24 0"/><circle cx="50" cy="30" r="7"/><path d="M38 56c0-10 24-10 24 0"/><circle cx="80" cy="36" r="7"/><path d="M68 62c0-10 24-10 24 0"/><circle cx="35" cy="66" r="7"/><path d="M23 92c0-10 24-10 24 0"/><circle cx="65" cy="66" r="7"/><path d="M53 92c0-10 24-10 24 0"/>',
+"belok":'<path d="M28 92V44c0-10 6-16 16-16h48M52 92V58c0-4 2-6 6-6h34" /><path d="M40 82V50c0-6 4-10 10-10h22M66 32l8 8-8 8" opacity=".6"/>',
+"blok":'<rect x="22" y="12" width="56" height="78"/><path d="M22 32h56M22 52h56M22 72h56M41 12v78M59 12v78"/>',
+"menonton":'<rect x="15" y="12" width="70" height="46" rx="3"/><path d="M42 58l-6 10M58 58l6 10"/><path d="M28 88c5-7 15-7 20 0M52 88c5-7 15-7 20 0"/><circle cx="38" cy="86" r="2" '+DOT+'/><circle cx="62" cy="86" r="2" '+DOT+'/>',
+"menuntun":'<circle cx="35" cy="20" r="7"/><path d="M35 27v32M35 59l-8 28M35 59l8 28M35 37l18 20"/><circle cx="66" cy="48" r="5"/><path d="M66 53v18M66 71l-6 16M66 71l6 16M66 58l-13 0"/>',
+"dingin":'<path d="M50 14v72M19 32l62 36M81 32L19 68"/><path d="M42 20l8 6 8-6M42 80l8-6 8 6"/>',
+"hangat":'<circle cx="50" cy="50" r="15"/><path d="M50 14v10M50 76v10M14 50h10M76 50h10M25 25l7 7M68 68l7 7M75 25l-7 7M32 68l-7 7"/>',
+"jalan":'<path d="M40 12L18 90M60 12l22 78M50 22v10M50 46v12M50 72v14"/>',
+"kepala":'<circle cx="50" cy="44" r="25"/><circle cx="42" cy="40" r="2" '+DOT+'/><circle cx="58" cy="40" r="2" '+DOT+'/><path d="M42 54c5 4 11 4 16 0M42 69v18h16V69"/>',
+"lembut":'<path d="M20 82c20-10 50-40 60-66-25 10-50 36-60 66zM35 66l15-2M45 53l15-2M55 40l12-2"/>',
+"pandu":'<circle cx="50" cy="50" r="32"/><circle cx="50" cy="50" r="8"/><path d="M18 50h24M58 50h24M50 58v24"/>',
+"segar":'<path d="M20 82c0-40 30-62 62-62 0 30-22 62-62 62zM20 82l42-42"/>',
+"tajam":'<path d="M8 54h26v12H8z"/><path d="M34 54h42l16 6-16 6H34z"/><path d="M80 40l4-6M88 44l6-3"/>',
+"bakul":'<path d="M18 46h64l-8 40H26z"/><path d="M30 46c0-30 40-30 40 0"/><path d="M22 60h56M24 73h52"/>',
+"bungkus":'<path d="M25 38l25-14 25 14v42l-25 10-25-10z"/><path d="M25 38l25 12 25-12M50 50v40"/>',
+"ikat":'<path d="M30 12v76M40 12v76M50 12v76M60 12v76M70 12v76"/><path d="M24 50h52" stroke-width="7"/>',
+"naskhah":'<path d="M50 24c-10-6-25-6-36-2v56c11-4 26-4 36 2 10-6 25-6 36-2V22c-11-4-26-4-36 2zM50 24v56"/>',
+"utas":'<path d="M20 22c0 44 60 44 60 0" stroke-dasharray="1 5" stroke-width="5"/><circle cx="50" cy="62" r="6"/>',
+"bidang":'<path d="M8 72l25-32h58L66 72z"/><path d="M24 56h55M40 72l24-32"/>',
+"umpan":'<path d="M50 8v54c0 16-20 16-20 2"/><path d="M36 50c5-6 10 6 15 0s10 6 15 0" stroke-width="5"/>',
+"terhantuk":'<path d="M8 26h84" stroke-width="8"/><circle cx="50" cy="46" r="12"/><path d="M50 58v30"/><path d="M30 38l-7-4M70 38l7-4M28 48h-8M72 48h8"/>',
+"tengadah":'<circle cx="50" cy="48" r="10"/><path d="M50 58v30M50 72l-10 16M50 72l10 16"/><path d="M50 34V12M42 20l8-8 8 8"/>',
+"rambut":'<circle cx="50" cy="56" r="22"/><path d="M28 52c0-20 10-26 22-26s22 6 22 26M35 32l-5-12M45 28l-2-14M55 28l2-14M65 32l5-12"/>',
+"tepung":'<path d="M28 30h44l6 56H22z"/><path d="M32 30l-4-10M68 30l4-10"/>'+T(36,66,13,"面粉"),
+"dakwat":'<path d="M35 46h30v40H35z"/><path d="M42 46V36h16v10"/><path d="M50 8c-6 10-8 14-4 17s8 0 4-17z" '+DOT+'/>',
+"teladan":'<circle cx="50" cy="26" r="7"/><path d="M50 33v22M50 55l-7 14M50 55l7 14M50 40l-10-8M50 40l10-8"/><path d="M28 70h44v18H28z"/><path d="M78 12l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z"/>',
+"sempadan":'<path d="M50 8v84" stroke-dasharray="6 5"/><path d="M14 50h22M86 50H64"/>'+T(16,32,13,"A")+T(76,32,13,"B"),
+"ruyung":'<path d="M40 92V14M60 92V14"/><path d="M40 26h20M40 42h20M40 58h20M40 74h20"/>',
+"sagu":'<path d="M18 50h64c0 26-16 36-32 36S18 76 18 50z"/><g '+DOT+'><circle cx="34" cy="44" r="3"/><circle cx="44" cy="41" r="3"/><circle cx="56" cy="43" r="3"/><circle cx="66" cy="41" r="3"/><circle cx="50" cy="34" r="3"/></g>',
+"cermat":'<circle cx="42" cy="42" r="20"/><path d="M57 57l25 25" stroke-width="6"/>',
+"jimat":'<path d="M30 40h40v46H30z"/><path d="M26 40h48"/><circle cx="50" cy="18" r="7"/><path d="M50 27v9"/>',
+"ukur":'<rect x="8" y="40" width="84" height="20"/><path d="M18 40v8M28 40v12M38 40v8M48 40v12M58 40v8M68 40v12M78 40v8"/>',
+"ubi":'<path d="M14 55c10-20 52-26 72-5-16 20-56 25-72 5z"/><path d="M86 50l8-6M14 55l-8 3"/>',
+"batas":'<path d="M8 42h84M8 62h84M8 82h84" stroke-width="5"/><path d="M20 36V24M32 36V22M46 36V24M60 36V22M74 36V24"/>',
+"budi":'<path d="M12 62h24c5 0 8 3 8 6v4H28M12 78h46l26-15c4-3-2-8-6-6l-15 7"/><path d="M50 40c-5-6-12-1-8 4l8 7 8-7c4-5-3-10-8-4z"/>',
+"balas":'<path d="M14 34h66M70 24l10 10-10 10"/><path d="M86 66H20M30 56L20 66l10 10"/>',
+"tuah":'<path d="M50 12l9 21 22 2-17 14 5 22-19-11-19 11 5-22-17-14 22-2z"/>',
+"itik":'<ellipse cx="56" cy="62" rx="30" ry="15"/><circle cx="34" cy="36" r="11"/><path d="M23 36H10l12 6"/><path d="M37 47c2 6 8 8 12 6"/><circle cx="32" cy="33" r="2" '+DOT+'/><path d="M5 86c10-5 20-5 30 0s20 5 30 0 20-5 30 0"/>',
+"berenang":'<circle cx="28" cy="44" r="7"/><path d="M36 50h34M50 50l10-16M70 50l14 5"/><path d="M5 62c10-6 20-6 30 0s20 6 30 0 20-6 30 0"/>',
+"memanjat":'<path d="M30 8v84M60 8v84M30 22h30M30 42h30M30 62h30M30 82h30"/><path d="M80 72V22M72 30l8-8 8 8"/>',
+"tupai":'<path d="M58 82c22 0 32-22 22-42-8-15-26-12-26 2 0 10 12 12 14 4"/><ellipse cx="40" cy="66" rx="14" ry="16"/><circle cx="32" cy="42" r="9"/><path d="M28 34l-2-9 7 5"/><circle cx="29" cy="41" r="1.6" '+DOT+'/><path d="M30 82h22"/>',
+"cempedak":'<ellipse cx="50" cy="56" rx="14" ry="32"/><path d="M50 24V12"/><g '+DOT+'><circle cx="45" cy="42" r="2"/><circle cx="55" cy="52" r="2"/><circle cx="46" cy="64" r="2"/><circle cx="54" cy="76" r="2"/></g>',
+"nangka":'<ellipse cx="50" cy="56" rx="27" ry="32"/><path d="M50 24V12"/><g '+DOT+'><circle cx="38" cy="40" r="2"/><circle cx="55" cy="44" r="2"/><circle cx="44" cy="58" r="2"/><circle cx="62" cy="62" r="2"/><circle cx="40" cy="74" r="2"/><circle cx="58" cy="78" r="2"/></g>',
+"tersepit":'<path d="M8 26h30v48H8zM62 26h30v48H62z"/><circle cx="50" cy="50" r="9"/><path d="M42 50h-0M46 20l-2-8M54 20l2-8"/>',
+"pagar":'<path d="M14 86V32l5-8 5 8v54M37 86V32l5-8 5 8v54M60 86V32l5-8 5 8v54M83 86V32l5-8 5 8v54"/><path d="M8 46h88M8 70h88"/>'
+};
+function pic(k){return PIC[k]?'<div class="pic"><svg viewBox="0 0 100 100" aria-hidden="true">'+PIC[k]+'</svg></div>':""}
+const KEY="bm-kad-imbas-v1";
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
+const store=Object.assign({dir:"bm",groups:["all"],miss:{},star:{}},load());
+if(!store.star)store.star={};
+
+const $=id=>document.getElementById(id);
+const card=$("card"),inner=$("inner");
+let deck=[],pos=0,total=0,known=0,missedThisRound=new Set(),cur=null,flipped=false,busy=false;
+const SPECIAL=["all","hard","star"];
+
+function counts(){const c={};W.forEach(w=>c[w[3]]=(c[w[3]]||0)+1);return c}
+function hardList(){return W.filter(w=>(store.miss[w[0]]||0)>0)}
+function starList(){return W.filter(w=>store.star[w[0]])}
+
+function renderChips(){
+  const c=counts(),box=$("groupChips");box.innerHTML="";
+  const mk=(key,name,n)=>{const b=document.createElement("button");b.className="chip";b.id="g-"+key;
+    b.setAttribute("aria-pressed",store.groups.includes(key));b.innerHTML=name+" <small>"+n+"</small>";
+    b.onclick=()=>toggleGroup(key);box.appendChild(b)};
+  mk("all","Semua",W.length);
+  mk("star","★ Bintang",starList().length);
+  mk("hard","Selalu salah",hardList().length);
+  Object.keys(G).forEach(k=>mk(k,G[k],c[k]));
+  document.querySelectorAll("#dirChips .chip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.dir===store.dir));
+}
+function toggleGroup(k){
+  if(SPECIAL.includes(k)){store.groups=[k]}
+  else{let g=store.groups.filter(x=>!SPECIAL.includes(x));
+    g=g.includes(k)?g.filter(x=>x!==k):g.concat(k);store.groups=g.length?g:["all"]}
+  save();renderChips();start();
+}
+function pool(){
+  if(store.groups.includes("all"))return W.slice();
+  if(store.groups.includes("hard"))return hardList();
+  if(store.groups.includes("star"))return starList();
+  return W.filter(w=>store.groups.includes(w[3]));
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function setPlaying(on){card.hidden=!on;$("swipehint").hidden=!on;$("done").hidden=on}
+function start(list){
+  const src=list||pool();
+  deck=shuffle(src.map(w=>({w,side:store.dir==="mix"?(Math.random()<.5?"bm":"zh"):store.dir})));
+  total=deck.length;known=0;pos=0;missedThisRound=new Set();
+  setPlaying(true);
+  if(!total){showEmpty();return}
+  show();
+}
+function showEmpty(){
+  cur=null;setPlaying(false);
+  const msg=store.groups.includes("star")?"Belum ada perkataan berbintang. Tekan ☆ pada kad untuk simpan.":"Belum ada perkataan yang kamu salah. Pilih topik lain.";
+  $("done").innerHTML="<h2>Tiada kad</h2><p>"+msg+"</p>";
+  $("count").textContent="0 kad";$("bar").style.width="0";
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
+function setStar(){const on=!!(cur&&store.star[cur.w[0]]);$("star").textContent=on?"★":"☆";$("star").setAttribute("aria-pressed",on)}
+function stamps(g,b){$("stampGood").style.opacity=g;$("stampBad").style.opacity=b}
+function show(){
+  cur=deck[pos];flipped=false;
+  inner.style.transition="none";card.classList.remove("flipped");void inner.offsetWidth;inner.style.transition="";
+  const [bm,zh,nota,g]=cur.w,tag=G[g];
+  $("tagF").textContent=tag;$("tagB").textContent=tag;
+  const bmEl='<div class="word bm">'+esc(bm)+'</div>',zhEl='<div class="word zh">'+esc(zh)+'</div>';
+  $("front").innerHTML=cur.side==="bm"?bmEl:zhEl;
+  const sub=cur.side==="bm"?'<div class="sub">'+esc(bm)+'</div>':'<div class="sub zh">'+esc(zh)+'</div>';
+  $("back").innerHTML=pic(bm)+(cur.side==="bm"?zhEl:bmEl)+sub+(nota?'<div class="nota">'+esc(nota)+'</div>':"");
+  setStar();
+  $("count").textContent=known+" / "+total+" tahu";
+  $("bar").style.width=(known/total*100)+"%";
+}
+function flip(){if(!cur||busy)return;flipped=!flipped;card.classList.toggle("flipped",flipped)}
+function answer(ok){
+  const c=deck.splice(pos,1)[0],k=c.w[0];
+  if(ok){known++;if(!missedThisRound.has(k)&&store.miss[k]){store.miss[k]--;if(store.miss[k]<=0)delete store.miss[k]}}
+  else{missedThisRound.add(k);store.miss[k]=(store.miss[k]||0)+1;
+    const at=Math.min(deck.length,pos+3+Math.floor(Math.random()*3));deck.splice(at,0,c)}
+  save();
+  if(!deck.length){finish();return}
+  if(pos>=deck.length)pos=0;
+  show();
+}
+function finish(){
+  cur=null;setPlaying(false);
+  $("bar").style.width="100%";$("count").textContent=total+" / "+total+" tahu";
+  const m=W.filter(w=>missedThisRound.has(w[0]));
+  let h="<h2>Selesai!</h2><p>"+total+" kad · "+(total-m.length)+" betul kali pertama · "+m.length+" salah</p>";
+  if(m.length){h+='<ul class="missed">'+m.map(w=>"<li><span>"+esc(w[0])+"</span><span>"+esc(w[1])+"</span></li>").join("")+"</ul>";
+    h+='<button class="btn plain" id="redo">Ulang yang salah ('+m.length+')</button>'}
+  h+='<button class="btn plain" id="restart">Mula semula</button>';
+  $("done").innerHTML=h;renderChips();
+  if(m.length)$("redo").onclick=()=>start(m);
+  $("restart").onclick=()=>start();
+}
+
+/* swipe: tap = flip; after flipping, drag right = tahu, drag left = belum tahu */
+function snap(){card.classList.remove("fly");card.classList.add("snap");card.style.transform="";stamps(0,0)}
+function fly(ok){
+  if(!cur||busy)return;
+  if(!flipped){flip();return}
+  busy=true;card.classList.remove("snap");card.classList.add("fly");
+  const w=card.offsetWidth||320;
+  card.style.transform="translateX("+(ok?1:-1)*w*1.4+"px) rotate("+(ok?22:-22)+"deg)";
+  stamps(ok?1:0,ok?0:1);
+  setTimeout(()=>{card.classList.remove("fly");card.style.transform="";stamps(0,0);busy=false;answer(ok)},240);
+}
+let sx=0,dx=0,dragging=false,moved=false;
+card.addEventListener("pointerdown",e=>{
+  if(busy||!cur||e.target.closest(".star"))return;
+  dragging=true;moved=false;sx=e.clientX;dx=0;card.classList.remove("snap","fly");
+  try{card.setPointerCapture(e.pointerId)}catch(_){}
+});
+card.addEventListener("pointermove",e=>{
+  if(!dragging)return;dx=e.clientX-sx;
+  if(Math.abs(dx)>8)moved=true;
+  if(!moved||!flipped)return;
+  card.style.transform="translateX("+dx+"px) rotate("+dx/18+"deg)";
+  const a=Math.min(1,Math.abs(dx)/90);stamps(dx>0?a:0,dx<0?a:0);
+});
+card.addEventListener("pointerup",()=>{
+  if(!dragging)return;dragging=false;
+  if(!moved){flip();return}
+  if(!flipped){flip();return}
+  const limit=Math.min(110,card.offsetWidth*.28);
+  if(Math.abs(dx)>limit)fly(dx>0);else snap();
+});
+card.addEventListener("pointercancel",()=>{if(dragging){dragging=false;snap()}});
+
+$("star").onclick=e=>{
+  e.stopPropagation();if(!cur)return;const k=cur.w[0];
+  if(store.star[k])delete store.star[k];else store.star[k]=1;
+  save();setStar();renderChips();
+};
+document.querySelectorAll("#dirChips .chip").forEach(b=>b.onclick=()=>{store.dir=b.dataset.dir;save();renderChips();start()});
+document.addEventListener("keydown",e=>{
+  if(e.target.closest&&e.target.closest(".chip,.btn,.star"))return;
+  if(e.key===" "||e.key==="Enter"){e.preventDefault();flip()}
+  else if(e.key==="ArrowRight"||e.key==="2")fly(true);
+  else if(e.key==="ArrowLeft"||e.key==="1")fly(false);
+  else if(e.key==="s"||e.key==="S")$("star").click();
+});
+renderChips();start();
+</script>
