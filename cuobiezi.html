@@ -56,6 +56,22 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cover .y2{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .item .starbtn{position:static}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
+[hidden]{display:none!important}
+.listbtn{background:none;border:none;color:var(--muted);font-size:15px;padding:10px 0;margin-top:4px;width:100%}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet header{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sheet header h2{font-size:16px;margin:0;font-weight:600}
+.sheet header button{margin-left:auto;border-radius:10px}
+.jlist{overflow-y:auto;flex:1}
+.jrow{display:flex;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.jrow.cur{background:var(--accent-soft)}
+.jrow .starbtn{position:static;font-size:20px;padding:0 4px}
+.jrow .n{color:var(--muted);font-size:12px;min-width:26px;font-variant-numeric:tabular-nums}
+.jrow .q{min-width:0;line-height:1.4}
+.jrow .q b{font-weight:600}
+.jrow .q span{display:block;color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:no-preference){.card{transition:transform .12s}.card:active{transform:scale(.99)}}
 </style>
 
@@ -79,11 +95,17 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <button id="flip">翻面</button>
       <button id="next" aria-label="Next">→</button>
     </div>
+    <button class="listbtn" id="openSheet">☰ 看所有卡（点一下跳过去）</button>
   </section>
   <section id="listView" hidden>
     <div class="row" style="margin-bottom:8px"><button id="openAll">全部打开</button><button id="closeAll">全部遮住</button></div>
     <div class="list" id="list"></div>
   </section>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <header><h2 id="sheetTitle"></h2><button id="closeSheet">关闭</button></header>
+  <div class="jlist" id="jlist"></div>
 </div>
 
 <script>
@@ -257,7 +279,7 @@ function render(){
 document.addEventListener("click",ev=>{
   const st=ev.target.closest("[data-star]");
   if(st){ev.stopPropagation();const w=st.dataset.star;stars.has(w)?stars.delete(w):stars.add(w);saveStars();
-    if(filt==="☆")build();else render();return}
+    if(filt==="☆")build();else render();if(!$("sheet").hidden)renderSheet();return}
   const sy=ev.target.closest("[data-say]"); if(sy){ev.stopPropagation();speak(sy.dataset.say);return}
   const cv=ev.target.closest(".cover"); if(cv){cv.classList.toggle("open");return}
 });
@@ -266,7 +288,7 @@ const go=d=>{if(deck.length){pos=(pos+d+deck.length)%deck.length;flipped=false;r
 $("card").addEventListener("click",ev=>{if(!ev.target.closest("button"))flip()});
 $("card").addEventListener("keydown",ev=>{if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();flip()}});
 $("flip").onclick=flip; $("prev").onclick=()=>go(-1); $("next").onclick=()=>go(1);
-document.addEventListener("keydown",ev=>{if(mode!=="card")return;if(ev.key==="ArrowLeft")go(-1);if(ev.key==="ArrowRight")go(1)});
+document.addEventListener("keydown",ev=>{if(mode!=="card"||!$("sheet").hidden)return;if(ev.key==="ArrowLeft")go(-1);if(ev.key==="ArrowRight")go(1)});
 let sx=null,sy0=null;
 $("card").addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy0=e.touches[0].clientY},{passive:true});
 $("card").addEventListener("touchend",e=>{if(sx===null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy0;
@@ -277,5 +299,14 @@ function setMode(m){mode=m;$("mCard").setAttribute("aria-pressed",m==="card");$(
 $("mCard").onclick=()=>setMode("card"); $("mList").onclick=()=>setMode("list");
 $("openAll").onclick=()=>document.querySelectorAll(".cover").forEach(c=>c.classList.add("open"));
 $("closeAll").onclick=()=>document.querySelectorAll(".cover").forEach(c=>c.classList.remove("open"));
+function renderSheet(scroll){
+  $("sheetTitle").textContent=deck.length+" 张（点一下跳过去）";
+  $("jlist").innerHTML=deck.map((i,k)=>{const [w,x,p,e]=D[i];return `<div class="jrow${k===pos?" cur":""}" data-jump="${k}">${starBtn(w)}<span class="n">${k+1}</span><span class="q"><b>${p}</b><span>${esc(e)}</span></span></div>`}).join("");
+  if(scroll){const c=$("jlist").querySelector(".cur"); if(c)c.scrollIntoView({block:"center"})}
+}
+$("openSheet").onclick=()=>{$("sheet").hidden=false;renderSheet(true)};
+$("closeSheet").onclick=()=>{$("sheet").hidden=true;render()};
+$("jlist").addEventListener("click",ev=>{if(ev.target.closest("[data-star]"))return;const r=ev.target.closest("[data-jump]");if(!r)return;
+  pos=+r.dataset.jump;flipped=false;$("sheet").hidden=true;render()});
 chips(); build();
 </script>
