@@ -116,7 +116,7 @@ h1{font-family:var(--display);font-weight:700;font-size:1.2rem;margin:0;letter-s
 
 <script>
 // [Perkataan, 中文意思, Nota (blank = nothing extra), group]
-const G={k2:"Peperiksaan",cp:"Cerpen",sj:"Sajak",sy:"Syair",nl:"Sastera & nilai",hs:"Hampir sama makna",bm:"Banyak makna",pb:"Penjodoh bilangan",pr:"Peribahasa",bq:"BigCQ 1",bi:"Bahasa istana"};
+const G={k2:"Peperiksaan",cp:"Cerpen",sj:"Sajak",sy:"Syair",nl:"Sastera & nilai",hs:"Hampir sama makna",bm:"Banyak makna",pb:"Penjodoh bilangan",pr:"Peribahasa",bq:"BigCQ 1",bi:"Bahasa istana",s2:"SmallCQ 2"};
 const W=[
 ["kesempatan / peluang","机会","","k2"],["keangkuhan","骄傲、傲慢","","k2"],["pelanggan","顾客","","k2"],
 ["adab","礼貌、礼节","不是 \"attitude\"","k2"],["sejak","自从","","k2"],["seorang diri","独自","= sendiri","k2"],
@@ -174,7 +174,14 @@ const W=[
 ["santap","（王）吃","= makan","bi"],["beradu","（王）睡","= tidur","bi"],["bersiram","（王）洗澡","= mandi","bi"],
 ["gering","（王）生病","= sakit","bi"],["mangkat","（王）驾崩","= mati","bi"],["titah","（王）命令、说话","= perintah / kata","bi"],
 ["murka","（王）发怒","= marah","bi"],["berangkat","（王）起驾、出发","= pergi","bi"],
-["menjunjung kasih","谢恩","= terima kasih（对王）","bi"]
+["menjunjung kasih","谢恩","= terima kasih（对王）","bi"],
+["melepaskan","放走；错过（机会）","tidak melepaskan peluang = 不错过机会","s2"],["kesempitan","狭窄；（生活）困苦","≠ kesempatan（机会）","s2"],
+["kesudahan","结局、结尾","","s2"],["kesempurnaan","完美","","s2"],
+["kerat","切下的一块；切","≠ kerap（经常）","s2"],["kerak","锅巴；硬壳","≠ kerap","s2"],["keras","硬；严厉","","s2"],
+["menghadapi","面对","menghadapi masalah","s2"],["menjaringkan","射进（球）","menjaringkan gol","s2"],["bersorak","欢呼","","s2"],
+["penyampaian","颁发、传达","majlis penyampaian hadiah = 颁奖典礼","s2"],["diperbuat daripada","由……制成","bahan → daripada","s2"],
+["bertolak","出发","bertolak dari + tempat","s2"],["sempena","为纪念、适逢","sempena hari jadi","s2"],
+["cincin","戒指","","s2"],["rantai","链子、项链","penjodoh: seutas rantai","s2"],["bersenam","做运动","","s2"]
 ];
 
 // Line drawings, 100×100 box, stroked in the text colour
@@ -286,6 +293,9 @@ function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){re
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 const store=Object.assign({dir:"bm",groups:["all"],star:{},shuffled:false},load());
 if(!store.star)store.star={};
+const STAR_SEED=["melepaskan","kesempitan","kesudahan","kesempurnaan","kerat","kerak","keras","menghadapi","menjaringkan","bersorak","penyampaian","diperbuat daripada","bertolak","sempena","cincin","rantai","bersenam","kesempatan / peluang","kerap","bimbang"];
+if(!store.seeded)store.seeded={};
+STAR_SEED.forEach(k=>{if(!store.seeded[k]){store.star[k]=1;store.seeded[k]=1}});save();
 if(store.groups.includes("hard"))store.groups=["all"];
 
 const $=id=>document.getElementById(id);
